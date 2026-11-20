@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match3Poker — Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+  :root { --red:#b80c0a; --ink:#1c1818; --cream:#fbf9f6; --muted:#6b6262; --line:#ece6dd; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Roboto, -apple-system, "Segoe UI", sans-serif; color:var(--ink); background:var(--cream); line-height:1.6; }
+  header { background:var(--red); color:#fff; padding:56px 20px 64px; text-align:center; }
+  header h1 { font-style:italic; font-weight:900; font-size:clamp(40px,8vw,64px); margin:0; letter-spacing:-.5px; }
+  header p { font-style:italic; margin:8px 0 0; font-size:18px; opacity:.9; }
+  .suits { font-size:22px; letter-spacing:10px; margin-bottom:10px; opacity:.85; }
+  nav { text-align:center; margin-top:22px; }
+  nav a { color:#fff; font-weight:700; text-decoration:none; border:2px solid rgba(255,255,255,.6); border-radius:999px; padding:6px 18px; margin:0 4px; display:inline-block; }
+  nav a:hover { background:rgba(255,255,255,.15); }
+  main { max-width:760px; margin:-32px auto 0; padding:0 16px 64px; }
+  section.lang { background:#fff; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,.08); padding:32px clamp(20px,5vw,44px); margin-bottom:28px; }
+  h2 { font-style:italic; font-weight:800; font-size:28px; margin:0 0 6px; }
+  h3 { font-style:italic; font-weight:800; font-size:19px; margin:28px 0 6px; }
+  .contact { background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin:18px 0 6px; }
+  .contact .mail { font-size:20px; font-weight:700; color:var(--red); word-break:break-all; }
+  .contact small { color:var(--muted); display:block; margin-top:4px; }
+  ol.hands { padding-left:0; list-style:none; margin:8px 0; counter-reset:h; }
+  ol.hands li { counter-increment:h; display:flex; gap:10px; padding:4px 0; border-bottom:1px dashed var(--line); }
+  ol.hands li::before { content:counter(h) "."; color:var(--muted); width:22px; text-align:right; }
+  ol.hands li:first-child { color:var(--red); font-weight:700; }
+  .muted { color:var(--muted); font-size:14px; }
+  footer { text-align:center; color:var(--muted); font-size:14px; padding:0 16px 40px; }
+  a { color:var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <div class="suits">♥ ♠ ♦ ♣</div>
+  <h1>Match3Poker</h1>
+  <p>Support · Поддержка</p>
+  <nav><a href="#en">English</a><a href="#ru">Русский</a></nav>
+</header>
+
+<main>
+<section class="lang" id="en" lang="en">
+  <h2>Need help?</h2>
+  <p>Found a bug, have a question or an idea for the game? Write to me — I read every message and usually reply within a few days.</p>
+  <div class="contact">
+    <div class="mail">alexander.zykow@gmail.com</div>
+    <small>Please mention your device model and OS version if you are reporting a problem.</small>
+  </div>
+
+  <h3>How to play</h3>
+  <p>The board is filled with playing cards. Select cards that form a poker hand before the timer runs out. Stronger hands and combos in a row earn more points.</p>
+
+  <h3>Poker hands, from strongest to weakest</h3>
+  <ol class="hands">
+    <li>Royal Flush</li><li>Straight Flush</li><li>Four of a Kind</li><li>Full House</li><li>Flush</li>
+    <li>Straight</li><li>Three of a Kind</li><li>Two Pair</li><li>One Pair</li>
+  </ol>
+
+  <h3>Frequently asked questions</h3>
+  <p><strong>Is this real-money gambling?</strong><br>No. Match3Poker is a casual puzzle game. You cannot bet real money or win money or prizes.</p>
+  <p><strong>Do I need an account?</strong><br>No. You can play without registration.</p>
+  <p><strong>Where is my progress saved?</strong><br>Your scores and settings are stored on your device. If you delete the game, they are deleted too.</p>
+  <p><strong>The game froze or crashed. What should I do?</strong><br>Close the game completely and open it again. Make sure you have the latest version from the store. If it keeps happening, email me with your device model and OS version.</p>
+</section>
+
+<section class="lang" id="ru" lang="ru">
+  <h2>Нужна помощь?</h2>
+  <p>Нашли ошибку, есть вопрос или идея для игры? Напишите мне — я читаю каждое письмо и обычно отвечаю в течение нескольких дней.</p>
+  <div class="contact">
+    <div class="mail">alexander.zykow@gmail.com</div>
+    <small>Если сообщаете о проблеме, укажите, пожалуйста, модель устройства и версию системы.</small>
+  </div>
+
+  <h3>Как играть</h3>
+  <p>На поле лежат игральные карты. Выбирайте карты, которые складываются в покерную комбинацию, пока не закончилось время. Чем сильнее комбинация и чем больше комбо подряд, тем больше очков.</p>
+
+  <h3>Покерные комбинации, от старшей к младшей</h3>
+  <ol class="hands">
+    <li>Роял-флеш</li><li>Стрит-флеш</li><li>Каре</li><li>Фулл-хаус</li><li>Флеш</li>
+    <li>Стрит</li><li>Сет (тройка)</li><li>Две пары</li><li>Пара</li>
+  </ol>
+
+  <h3>Частые вопросы</h3>
+  <p><strong>Это азартная игра на деньги?</strong><br>Нет. Match3Poker — казуальная головоломка. В ней нельзя ставить реальные деньги и выигрывать деньги или призы.</p>
+  <p><strong>Нужен ли аккаунт?</strong><br>Нет, играть можно без регистрации.</p>
+  <p><strong>Где сохраняется прогресс?</strong><br>Рекорды и настройки хранятся на вашем устройстве. Если удалить игру, они тоже удалятся.</p>
+  <p><strong>Игра зависла или вылетела. Что делать?</strong><br>Полностью закройте игру и откройте снова. Проверьте, что у вас последняя версия из магазина. Если проблема повторяется, напишите мне и укажите модель устройства и версию системы.</p>
+</section>
+</main>
+
+<footer><a href="privacy/">Privacy Policy · Политика конфиденциальности</a><br>© 2026 Alexander Zykow · Match3Poker</footer>
+</body>
+</html>
