@@ -163,6 +163,8 @@ button{font:inherit;color:inherit}
 .entity .keys{min-height:60px}
 .entity .key{font-size:13px;line-height:13px}
 .entity .key.got{animation:got .45s ease-out}
+.entity .key.dim{opacity:.55;text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(91,255,36,.45)}
+.lvl{font:700 11px/1 var(--font-px);color:var(--board);background:var(--yellow);padding:4px 6px 3px;border-radius:2px;letter-spacing:.06em}
 @keyframes got{0%{transform:scale(1.35);box-shadow:0 0 18px rgba(128,255,77,.9)}100%{transform:scale(1)}}
 .ticks.prog i{background:var(--trace)}
 .ticks.prog i.lit{background:var(--act-stroke);box-shadow:0 0 4px var(--act-stroke)}
@@ -300,6 +302,7 @@ button{font:inherit;color:inherit}
   <section class="panel" id="panel" aria-label="Доступы">
     <div class="hud">
       <span class="brand">ESC</span>
+      <span class="lvl" id="lvl">LVL 1</span>
       <span class="score" id="score">0/16</span>
       <span class="streak" id="streak" title="Серия: 3 верных ключа подряд дают +1 подсказку"><i></i><i></i><i></i></span>
       <span class="clock" id="clock">03:00</span>
@@ -313,7 +316,7 @@ button{font:inherit;color:inherit}
 <div class="overlay" id="intro">
   <div class="dialog"><div class="shell oct"><div class="body oct">
     <h1>ESC</h1>
-    <p class="sub">Паззл наоборот: почти все ключи на поле лишние. Нужны только те, что справа.</p>
+    <p class="sub">Паззл наоборот: почти все ключи на поле лишние. Нужны только те, что справа. Каждый пройденный уровень — поле больше, ловушек хлеще.</p>
     <ul class="rules">
       <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Найди на поле ключи из <b>ACCESS 1</b> и перетащи их вправо. Двойной клик тоже работает.</span></li>
       <li><span class="ic"><svg viewBox="0 0 20 20"><path d="M10 2v16M2 10h16" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Поле большое. Тащи его, как карту, колесо или щипок приближают.</span></li>
@@ -334,16 +337,39 @@ button{font:inherit;color:inherit}
       <div><dt>Осталось</dt><dd id="rTime">00:00</dd></div>
       <div><dt>Ошибки</dt><dd id="rMiss">0</dd></div>
     </dl>
-    <div class="actions"><button type="button" class="btn big" id="again">ЕЩЁ РАЗ</button></div>
+    <div class="actions">
+      <button type="button" class="btn big" id="next" hidden>СЛЕДУЮЩИЙ УРОВЕНЬ</button>
+      <button type="button" class="btn big" id="again">ЕЩЁ РАЗ</button>
+      <button type="button" class="btn big" id="prev" hidden>УРОВЕНЬ НИЖЕ</button>
+    </div>
   </div></div></div>
 </div>
 
 <script>
 (() => {
 "use strict";
-const CFG = { time: 240, penalty: 6, perEntity: 8, cols: 6, rows: 4, decoys: 3, freeze: 25, hint: 4.5,
+const CFG = { penalty: 6, freeze: 25, hint: 4.5,
   cost: { hint: 20, freeze: 15, swap: 20 },
-  charges: { hint: 3, freeze: 2, swap: 2 }, maxCharges: 4, cells: ["hint", "hint", "freeze", "freeze", "swap"], streakFor: 3 };
+  charges: { hint: 3, freeze: 2, swap: 2 }, maxCharges: 4, streakFor: 3 };
+/* Levels: small and forgiving first, then the field grows, decoys multiply and time gets tighter. */
+const LEVELS = [null,
+  { cols: 3, rows: 2, per: 4, decoys: 1, dens: .55, cells: ["hint", "freeze"] },
+  { cols: 4, rows: 2, per: 5, decoys: 1, dens: .65, cells: ["hint", "freeze", "swap"] },
+  { cols: 4, rows: 3, per: 6, decoys: 2, dens: .75, cells: ["hint", "hint", "freeze", "swap"] },
+  { cols: 5, rows: 3, per: 7, decoys: 2, dens: .85, cells: ["hint", "hint", "freeze", "freeze", "swap"] },
+  { cols: 6, rows: 3, per: 8, decoys: 3, dens: .95, cells: ["hint", "hint", "freeze", "freeze", "swap"] },
+  { cols: 6, rows: 4, per: 8, decoys: 3, dens: 1, cells: ["hint", "hint", "freeze", "freeze", "swap"] }];
+const MAX_LEVEL = 7;          // beating level 7 wins the game
+const BASE_TIME = 120;        // level 1 time; level n gets n × base, capped at 5 ×
+function levelCfg(n) {
+  const extra = Math.max(0, n - 6), b = LEVELS[Math.min(n, 6)];
+  const c = { ...b, cols: b.cols + Math.min(2, Math.floor(extra / 2)), decoys: b.decoys + Math.min(2, Math.floor((extra + 1) / 2)) };
+  c.entities = n === 1 ? 1 : 2;                // level 1 has only ACCESS 1
+  c.time = BASE_TIME * Math.min(n, 5);
+  return c;
+}
+let level = 1;
+try { level = Math.min(MAX_LEVEL, Math.max(1, parseInt(localStorage.getItem("esc-level") || "1", 10) || 1)); } catch (_) {}
 const ABILITY = { hint: { card: "abHint", pips: "pHint", name: "подсказка" }, freeze: { card: "abFreeze", pips: "pFreeze", name: "заморозка" }, swap: { card: "abSwap", pips: "pSwap", name: "переключатель" } };
 const CELL_ICON = {
   hint: '<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="7" r="2" fill="currentColor"/></svg>',
@@ -393,13 +419,14 @@ let S = null;
 const cam = { x: 0, y: 0, s: .8 };
 let worldW = 0, worldH = 0;
 
-function newState() {
+function newState(lvl) {
+  const L = levelCfg(lvl);
   const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
   rnd = mulberry(seed);
   const targetSet = new Set();
-  const entities = [0, 1].map(i => ({ name: "ACCESS " + (i + 1), keys: [] }));
+  const entities = Array.from({ length: L.entities }, (_, i) => ({ name: "ACCESS " + (i + 1), keys: [] }));
   for (const e of entities) {
-    while (e.keys.length < CFG.perEntity) {
+    while (e.keys.length < L.per) {
       const c = randCode(9, 4);
       if (targetSet.has(c) || !c.split("").some(ch => SIM[ch])) continue;
       targetSet.add(c); e.keys.push({ code: c, found: false, el: null, slot: null });
@@ -408,14 +435,14 @@ function newState() {
   const decoys = [];
   const taken = new Set(targetSet);
   for (const e of entities) for (const k of e.keys) {
-    for (let d = 0; d < CFG.decoys; d++) { const m = mutate(k.code); if (!taken.has(m)) { taken.add(m); decoys.push(m); } }
+    for (let d = 0; d < L.decoys; d++) { const m = mutate(k.code); if (!taken.has(m)) { taken.add(m); decoys.push(m); } }
   }
   const modules = [];
-  for (let r = 0; r < CFG.rows; r++) {
+  for (let r = 0; r < L.rows; r++) {
     const row = [];
-    for (let c = 0; c < CFG.cols; c++) {
+    for (let c = 0; c < L.cols; c++) {
       const size = pick(["narrow", "medium", "medium", "wide", "wide"]);
-      const n = ri(COUNT[size][0], COUNT[size][1]);
+      const n = Math.max(6, Math.round(ri(COUNT[size][0], COUNT[size][1]) * L.dens));
       const keys = [];
       while (keys.length < n) { const k = randCode(MAXLEN[size]); if (!targetSet.has(k)) keys.push({ code: k, kind: "noise" }); }
       row.push({ size, keys, r, c });
@@ -431,12 +458,16 @@ function newState() {
       if (m.keys[i].kind !== "noise") continue;
       m.keys[i] = { code, kind, ref }; return;
     }
+    // fallback: never lose a needed key — append it to a module wide enough to hold it
+    let m = flat.find(x => code.length <= MAXLEN[x.size]);
+    if (!m) { m = flat[0]; m.size = "wide"; }
+    m.keys.splice(ri(0, m.keys.length), 0, { code, kind, ref });
   };
   for (const e of entities) for (const k of e.keys) placeSpecial(k.code, "target", k);
   for (const d of decoys) placeSpecial(d, "decoy");
-  for (const c of CFG.cells) placeSpecial("+1", "cell", c);
+  for (const c of L.cells) placeSpecial("+1", "cell", c);
   return {
-    entities, modules, active: 0, total: CFG.time, timeLeft: CFG.time, running: false, over: false,
+    level: lvl, entities, modules, active: 0, total: L.time, timeLeft: L.time, running: false, over: false,
     frozenUntil: 0, charges: { ...CFG.charges }, mistakes: 0, found: 0, hintTimer: 0, streak: 0, cellsTaken: 0
   };
 }
@@ -596,7 +627,7 @@ function renderPanel() {
       <div class="state"></div>`;
     const box = d.querySelector(".keys");
     for (const k of e.keys) {
-      const s = document.createElement("span"); s.className = "key dim"; s.textContent = k.code; k.slot = s; box.appendChild(s);
+      const s = document.createElement("span"); s.className = "key"; s.textContent = k.code; k.slot = s; box.appendChild(s);
     }
     e.box = d; entsBox.appendChild(d);
   });
@@ -617,10 +648,10 @@ function updatePanel() {
   $("score").textContent = `${found}/${S.entities.reduce((a, e) => a + e.keys.length, 0)}`;
   renderPips("pHint", S.charges.hint); renderPips("pFreeze", S.charges.freeze); renderPips("pSwap", S.charges.swap);
   $("streak").querySelectorAll("i").forEach((t, j) => t.classList.toggle("lit", j < S.streak % CFG.streakFor));
-  const other = S.entities[1 - S.active];
+  const other = S.entities.length > 1 ? S.entities[1 - S.active] : null;
   $("abHint").disabled = !S.running || S.charges.hint <= 0;
   $("abFreeze").disabled = !S.running || S.charges.freeze <= 0;
-  $("abSwap").disabled = !S.running || S.charges.swap <= 0 || other.keys.every(k => k.found);
+  $("abSwap").disabled = !S.running || S.charges.swap <= 0 || !other || other.keys.every(k => k.found);
 }
 
 /* port dashes = charges left */
@@ -636,7 +667,7 @@ function renderPips(id, n) {
 
 /* ---------------- sound (synthesized, starts after first interaction) ---------------- */
 const SFX = (() => {
-  let ctx = null, out = null, muted = false, nbuf = null;
+  let ctx = null, out = null, muted = false, nbuf = null, humG = null;
   try { muted = localStorage.getItem("esc-muted") === "1"; } catch (_) {}
   function init() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume().catch(() => {}); return; }
@@ -644,7 +675,7 @@ const SFX = (() => {
     try { ctx = new AC(); } catch (_) { return; }
     out = ctx.createGain(); out.gain.value = muted ? 0 : .55;
     const comp = ctx.createDynamicsCompressor(); out.connect(comp); comp.connect(ctx.destination);
-    const hg = ctx.createGain(); hg.gain.value = .016;
+    const hg = ctx.createGain(); hg.gain.value = .016; humG = hg;
     const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 170;
     [55, 55.35, 110.4].forEach(f => { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.connect(lp); o.start(); });
     lp.connect(hg); hg.connect(out);
@@ -664,8 +695,129 @@ const SFX = (() => {
     const g = ctx.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
     s.connect(fl); fl.connect(g); g.connect(out); s.start(t); s.stop(t + d + .02);
   }
+  /* ---- adaptive music: 0 = hum only, 1 = muffled straight beat, 2 = + anxious sonar melody, 3 = + dramatic melody and drone ----
+     Patterns are 16-step strings. K/k kick, S/s snare, x hat. */
+  let drum = null, verbIn = null, phase = 0, pending = 0, frozenM = false, timer = 0, nextT = 0, step = 0, bar = 0, bassG = null;
+  // one straight, muffled four-on-the-floor for the whole second half; phases 2–3 only add the melody
+  const BPM = [0, 118, 118, 118];
+  const FILT = [500, 420, 420, 640];
+  const STRAIGHT = { k: ["K---K---K---K---"], s: ["----------------"], h: ["--x---x---x---x-"] };
+  const PAT = { 1: STRAIGHT, 2: STRAIGHT, 3: STRAIGHT };
+  const DRUM_VOL = [0, .12, .12, .13]; // barely audible, sits under the game sounds
+  /* Sonar-timbre melody, 4-bar phrases, step → Hz.
+     Phase 2 (anxious): sparse A minor with a raised G# that leans and never resolves.
+     Phase 3 (drama): eighth notes, higher, half-step clashes F–E and Bb–A, a climb, then G# hanging over the bar. */
+  const N = { Gs4: 415.3, A4: 440, Bb4: 466.2, B4: 493.9, C5: 523.3, D5: 587.3, E5: 659.3, F5: 698.5, Gs5: 830.6, A5: 880 };
+  const MELODY = {
+    2: [{ 0: N.A4, 8: N.C5, 12: N.B4 }, { 0: N.A4, 6: N.E5, 12: N.D5 }, { 0: N.C5, 8: N.B4 }, { 0: N.Gs4 }],
+    3: [{ 0: N.A5, 2: N.E5, 4: N.F5, 6: N.E5, 10: N.C5, 12: N.B4 },
+        { 0: N.D5, 2: N.F5, 4: N.E5, 6: N.Bb4, 8: N.A4, 12: N.Bb4 },
+        { 0: N.A4, 2: N.C5, 4: N.E5, 6: N.A5, 8: N.Gs5, 10: N.F5, 12: N.E5 },
+        { 0: N.Gs5, 8: N.F5, 12: N.E5, 14: N.Bb4 }]
+  };
+  let sonarIn = null;
+  function sonar(t, f, v = .5) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine";
+    o.frequency.setValueAtTime(f * 1.012, t); o.frequency.exponentialRampToValueAtTime(f, t + .08);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + 1.3);
+    o.connect(g); g.connect(sonarIn); o.start(t); o.stop(t + 1.35);
+  }
+  // low dissonant drone under the dramatic part: A2 against Bb2, slowly beating
+  function drone(t, d) {
+    const g = ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + d * .4); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    for (const f of [110, 116.5]) { const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + d + .05); }
+    g.connect(sonarIn);
+  }
+  function dNoise(t, d, v, f, type, dest) {
+    if (!nbuf) { nbuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const ch = nbuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1; }
+    const s = ctx.createBufferSource(); s.buffer = nbuf;
+    const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = .7;
+    const g = ctx.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    s.connect(fl); fl.connect(g); g.connect(dest); s.start(t, Math.random() * .5); s.stop(t + d + .02);
+  }
+  function dTone(t, f, f2, d, v, type, dest) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type;
+    o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d * .5);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(dest); o.start(t); o.stop(t + d + .02);
+  }
+  // sidechain: hum and bass dip under every kick so the groove pumps
+  function duck(t) {
+    for (const [g, base] of [[humG, .016], [bassG, 1]]) {
+      if (!g) continue;
+      g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(base, t);
+      g.gain.linearRampToValueAtTime(base * .3, t + .012); g.gain.linearRampToValueAtTime(base, t + .2);
+    }
+  }
+  const vary = () => .85 + Math.random() * .3;
+  function kick(t, v) { dTone(t, 165, 44, .34, .95 * v, "sine", drum.bus); dNoise(t, .012, .3 * v, 3500, "highpass", drum.bus); duck(t); }
+  function snare(t, v) {
+    dTone(t, 205, 160, .12, .3 * v, "triangle", drum.bus);
+    dNoise(t, .22, .4 * v, 2300, "bandpass", drum.bus);
+    dNoise(t, .07, .22 * v, 6500, "highpass", drum.bus);
+    dNoise(t, .2, .35 * v, 2300, "bandpass", verbIn);
+  }
+  const hat = (t, v, open) => dNoise(t, open ? .2 : .035, .15 * v, 8200, "highpass", drum.bus);
+  function playStep(i, t) {
+    const p = PAT[phase]; if (!p) return;
+    const at = arr => arr[bar % arr.length][i];
+    const k = at(p.k), s = at(p.s), h = at(p.h);
+    if (k === "K") kick(t, .8); else if (k === "k") kick(t, .55);
+    if (s === "S") snare(t, vary()); else if (s === "s") snare(t, .28 * vary());
+    if (h === "x") hat(t, .3 * vary(), false);
+    const mel = MELODY[phase];
+    if (mel && mel[bar % 4][i]) sonar(t, mel[bar % 4][i], phase === 3 ? .7 : .5);
+    if (phase === 3 && i === 0 && bar % 2 === 0) drone(t, 2 * 16 * 60 / BPM[3] / 4);
+  }
+  function applyPhase(ph, t) {
+    phase = ph;
+    drum.bus.gain.setTargetAtTime(DRUM_VOL[ph], t, .08);
+    drum.f.frequency.setTargetAtTime(frozenM ? 300 : FILT[ph], t, .1);
+  }
+  function schedule() {
+    if (!ctx) return;
+    while (nextT < ctx.currentTime + .15) {
+      const i = step % 16;
+      if (i === 0) { if (step > 0) bar++; if (pending !== phase) applyPhase(pending, nextT); }   // switch only on a downbeat
+      if (!phase) return;
+      const sl = 60 / BPM[phase] / 4;
+      playStep(i, nextT);
+      nextT += sl; step++;
+    }
+  }
+  function ensureDrums() {
+    if (drum) return;
+    const bus = ctx.createGain(); bus.gain.value = 0;
+    const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 500; f.Q.value = .8;
+    bus.connect(f); f.connect(out); drum = { bus, f };
+    bassG = ctx.createGain(); bassG.gain.value = 1; bassG.connect(bus);
+    // small room reverb for the snare
+    const len = Math.floor(ctx.sampleRate * 1.3), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+    const conv = ctx.createConvolver(); conv.buffer = ir;
+    verbIn = ctx.createGain(); verbIn.gain.value = .35; verbIn.connect(conv); conv.connect(bus);
+    // sonar: own quiet bus with a dotted echo, outside the drum filter so it stays clear
+    sonarIn = ctx.createGain(); sonarIn.gain.value = .045;
+    const dl = ctx.createDelay(1), fb = ctx.createGain(), dlp = ctx.createBiquadFilter();
+    dl.delayTime.value = 3 * 60 / BPM[3] / 4; fb.gain.value = .42; dlp.type = "lowpass"; dlp.frequency.value = 2200;
+    sonarIn.connect(out); sonarIn.connect(dl); dl.connect(dlp); dlp.connect(fb); fb.connect(dl); dlp.connect(out);
+  }
+  function music(ph, frozen) {
+    if (!ctx) return;
+    ensureDrums();
+    if (frozen !== frozenM) { frozenM = frozen; drum.f.frequency.setTargetAtTime(frozen ? 300 : FILT[phase], ctx.currentTime, .25); }
+    if (ph === pending) return;
+    pending = ph;
+    if (ph === 0) {                       // game over / new game: stop right away
+      phase = 0; drum.bus.gain.setTargetAtTime(0, ctx.currentTime, .12);
+      if (timer) { clearInterval(timer); timer = 0; }
+      return;
+    }
+    if (!timer) { nextT = ctx.currentTime + .06; step = 0; bar = 0; timer = setInterval(schedule, 25); }
+  }
+
   return {
-    init,
+    init, music,
     get muted() { return muted; },
     setMuted(m) { muted = m; try { localStorage.setItem("esc-muted", m ? "1" : "0"); } catch (_) {} if (out) out.gain.setTargetAtTime(m ? 0 : .55, ctx.currentTime, .03); },
     hover() { tone(2600, .02, { v: .018 }); },
@@ -682,7 +834,7 @@ const SFX = (() => {
     pickup() { tone(440, .18, { type: "triangle", v: .07, f2: 1760 }); },
     charge() { tone(880, .08, { v: .06 }); tone(1175, .08, { v: .06, at: .07 }); tone(1760, .25, { type: "triangle", v: .08, at: .14 }); noise(.2, { v: .05, f: 5000, at: .1 }); },
     full() { tone(200, .12, { type: "triangle", v: .08 }); },
-    low(urgent) { tone(urgent ? 1250 : 880, .05, { v: .045 }); },
+    low(urgent) { tone(urgent ? 1250 : 880, .04, { v: .03 }); },
     boot() { noise(.3, { v: .06, f: 200, f2: 3500 }); tone(110, .35, { type: "sawtooth", v: .05, f2: 440 }); },
     win() { [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, .3, { v: .055, at: i * .09 })); tone(1046, .9, { type: "triangle", v: .08, at: .5 }); },
     lose() { [440, 370, 311, 262].forEach((f, i) => tone(f, .34, { type: "sawtooth", v: .065, at: i * .16 })); noise(1, { v: .1, f: 420, f2: 60, type: "lowpass", at: .2 }); }
@@ -974,7 +1126,7 @@ function tryCapture(el, ghost) {
     const g = ghost || ghostFrom(el);
     const [kx, ky] = centerOf(ghost || el); burst(kx, ky, "#a6ff6a", 9); SFX.ok();
     flyGhost(g, slot.slot, true, () => {
-      slot.slot.classList.remove("dim"); slot.slot.classList.add("got");
+      slot.slot.classList.add("dim", "got");
       const [sx, sy] = centerOf(slot.slot); burst(sx, sy, "#5bff24", 14); SFX.lock(); flashShell(ent.box);
     });
     S.streak++;
@@ -1089,7 +1241,7 @@ function useFreeze() {
   SFX.freeze(); banner("FREEZE", "blue");
 }
 function useSwap() {
-  if (!S.running || S.charges.swap <= 0) return;
+  if (!S.running || S.charges.swap <= 0 || S.entities.length < 2) return;
   const o = 1 - S.active;
   if (S.entities[o].keys.every(k => k.found)) return;
   if (!payTime("swap")) return;
@@ -1136,6 +1288,12 @@ function loop(t) {
     const sec = Math.ceil(S.timeLeft);
     if (sec !== S.lastSec) { S.lastSec = sec; if (!frozen && sec <= 30 && sec > 0) SFX.low(sec <= 10); }
     if (S.timeLeft <= 0) { S.timeLeft = 0; finish(false); }
+    else {
+      // music follows the clock: first half calm, then muffled kick, breakbeat, drum&bass at the end
+      const p = 1 - S.timeLeft / S.total;
+      const ph = (p >= .88 || S.timeLeft < 25) ? 3 : p >= .72 ? 2 : p >= .5 ? 1 : 0;
+      SFX.music(ph, frozen);
+    }
     updateClock();
   }
   requestAnimationFrame(loop);
@@ -1145,28 +1303,43 @@ function start() {
   if (!S || S.running || S.over) return;
   S.running = true; last = performance.now();
   $("intro").hidden = true; updatePanel();
-  SFX.init(); SFX.boot(); banner("ESC", "green");
+  SFX.init(); SFX.boot(); banner("LEVEL " + S.level, "green");
 }
 function finish(win) {
   S.over = true; S.running = false;
+  SFX.music(0, false);
   app.classList.remove("frozen", "low"); $("abFreeze").classList.remove("on");
+  const final = win && S.level >= MAX_LEVEL;
+  $("next").hidden = !win || final; $("prev").hidden = win || S.level <= 1;
+  $("again").textContent = final ? "С ПЕРВОГО УРОВНЯ" : win ? "ПЕРЕИГРАТЬ" : "ЕЩЁ РАЗ";
   updatePanel(); updateClock();
-  if (win) { SFX.win(); field.classList.add("win"); banner("ACCESS GRANTED", "green"); }
+  S.final = win && S.level >= MAX_LEVEL;
+  if (S.final) { SFX.win(); setTimeout(() => SFX.unlock(), 600); field.classList.add("win"); banner("SYSTEM BREACHED", "green"); }
+  else if (win) { SFX.win(); field.classList.add("win"); banner("ACCESS GRANTED", "green"); }
   else { SFX.lose(); field.classList.add("dead"); hitField(); banner("LINK LOST", "red"); }
   const total = S.entities.reduce((a, e) => a + e.keys.length, 0);
-  $("rTitle").textContent = win ? "ДОСТУП ОТКРЫТ" : "СОЕДИНЕНИЕ ПОТЕРЯНО";
+  $("rTitle").textContent = final ? "СИСТЕМА ВЗЛОМАНА" : win ? `УРОВЕНЬ ${S.level} ПРОЙДЕН` : "СОЕДИНЕНИЕ ПОТЕРЯНО";
   $("rTitle").classList.toggle("bad", !win);
-  $("rSub").textContent = win ? "Оба доступа заполнены. Лишние ключи остались на поле." : "Шина опустела раньше, чем открылись оба доступа.";
+  const nl = levelCfg(S.level + 1);
+  const opened = S.entities.length > 1 ? "Оба доступа открыты" : "Доступ открыт";
+  $("rSub").textContent = final
+    ? `Все ${MAX_LEVEL} уровней пройдены. Ни один лишний ключ не ушёл в шину.`
+    : win
+      ? `${opened}. Уровень ${S.level + 1} из ${MAX_LEVEL}: ${nl.cols * nl.rows} модулей, ${nl.entities} доступа по ${nl.per} ключей, ловушек на ключ: ${nl.decoys}, время ${fmt(nl.time)}.`
+      : `Шина опустела раньше, чем открылись доступы. Уровень ${S.level} из ${MAX_LEVEL}.`;
   $("rKeys").textContent = `${S.found}/${total}`;
   $("rTime").textContent = fmt(S.timeLeft);
   $("rMiss").textContent = S.mistakes;
-  setTimeout(() => { $("result").hidden = false; $("again").focus(); }, 1500);
+  setTimeout(() => { $("result").hidden = false; (win ? $("next") : $("again")).focus(); }, 1500);
 }
 
 async function newGame(autoStart) {
   document.querySelectorAll(".key.ghost").forEach(g => g.remove());
   clearTimeout(S && S.hintTimer);
-  S = newState();
+  SFX.music(0, false);
+  try { localStorage.setItem("esc-level", String(level)); } catch (_) {}
+  S = newState(level);
+  $("lvl").textContent = `LVL ${level}/${MAX_LEVEL}`;
   app.classList.remove("frozen", "low"); field.classList.remove("win", "dead", "hit");
   for (const id of ["pHint", "pFreeze", "pSwap"]) { $(id).textContent = ""; delete $(id).dataset.ready; }
   renderField(); renderPanel(); centerCam(); updateClock(); hideFocus();
@@ -1176,7 +1349,9 @@ async function newGame(autoStart) {
 }
 
 $("start").addEventListener("click", () => start());
-$("again").addEventListener("click", () => newGame(true));
+$("again").addEventListener("click", () => { if (S.final) level = 1; newGame(true); });
+$("next").addEventListener("click", () => { level = Math.min(MAX_LEVEL, S.level + 1); newGame(true); });
+$("prev").addEventListener("click", () => { level = Math.max(1, S.level - 1); newGame(true); });
 $("restart").addEventListener("click", () => newGame(!$("intro").hidden ? false : true));
 
 document.addEventListener("keydown", e => {
