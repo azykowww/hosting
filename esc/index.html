@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#060b04">
 <meta name="description" content="ESC Keyhunt — паззл наоборот: найди нужные ключи среди сотен лишних, пока шина не опустела.">
 <title>ESC Keyhunt</title>
@@ -27,7 +27,8 @@
 }
 html{height:100%;box-sizing:border-box}
 *,*::before,*::after{box-sizing:inherit}
-body{height:100%;margin:0;background:var(--board);color:var(--key-text);font-family:var(--font-key);overflow:hidden;-webkit-font-smoothing:antialiased}
+body{height:100%;margin:0;background:var(--board);color:var(--key-text);font-family:var(--font-key);overflow:hidden;-webkit-font-smoothing:antialiased;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}  /* no browser double-tap zoom: taps belong to the game */
 button{font:inherit;color:inherit}
 [hidden]{display:none!important}
 :focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
@@ -285,15 +286,13 @@ button{font:inherit;color:inherit}
   .legend{display:none}
   .dialog h1{font-size:24px}
   .stats dd{font-size:17px}
-  /* intro on a phone: START pinned right under the title, rules scroll beneath it */
+  /* intro on a phone: rules scroll, START stays pinned to the bottom of the card */
   .overlay{padding:max(12px,env(safe-area-inset-top,0px)) 12px max(12px,env(safe-area-inset-bottom,0px))}
   .dialog .body{max-height:calc(100dvh - 40px)}
-  #intro .body{display:flex;flex-direction:column;padding-top:22px}
-  #intro h1{order:0}
-  #intro .actions{order:1;position:sticky;top:-22px;z-index:2;margin:0 -26px 14px;padding:12px 26px 14px;background:var(--module);border-bottom:1px solid var(--trace)}
+  #intro .body{padding-top:22px;padding-bottom:0}
+  #intro .rules{margin-bottom:6px}
+  #intro .actions{position:sticky;bottom:0;z-index:2;margin:0 -26px;padding:14px 26px calc(18px + env(safe-area-inset-bottom,0px));background:var(--module);border-top:1px solid var(--trace)}
   #intro .actions .btn{width:100%;font-size:17px;padding:15px 18px}
-  #intro .sub{order:2}
-  #intro .rules{order:3;margin-bottom:4px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -361,7 +360,7 @@ button{font:inherit;color:inherit}
     <h1>ESC</h1>
     <p class="sub">Паззл наоборот: почти все ключи на поле лишние. Нужны только те, что в доступах. Каждый пройденный уровень — поле больше, ловушек хлеще.</p>
     <ul class="rules">
-      <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Найди на поле ключи из <b>ACCESS 1</b> и потяни их к доступам. Двойной тап или клик тоже работает.</span></li>
+      <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Найди на поле ключи из <b>ACCESS 1</b> и потяни их к доступам. Или тапни ключ — он увеличится, тапни ещё раз — подтвердишь. На компьютере — двойной клик.</span></li>
       <li><span class="ic"><svg viewBox="0 0 20 20"><path d="M10 2v16M2 10h16" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Поле большое. Тащи его, как карту, колесо или щипок приближают.</span></li>
       <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="#ff4256" stroke-width="1.5"/></svg></span><span>Похожие ключи — ловушки. Ложный ключ отнимает <b>6 секунд</b>.</span></li>
       <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="2" y="6" width="16" height="8" rx="1.5" fill="none" stroke="#2fa8ff" stroke-width="1.5"/><path d="M7 10h6M10 7v6" stroke="#2fa8ff" stroke-width="1.5"/></svg></span><span>Картриджи у шины — способности. Каждая съедает много времени: подсказка и переключение по <b>20 с</b>, заморозка 15 с за 25 с паузы. Чёрточки — заряды. Ячейки <b>+1</b> на поле и серия из 3 верных ключей пополняют их.</span></li>
@@ -1040,7 +1039,7 @@ field.addEventListener("pointermove", e => {
     if (dist > 6) {
       if (gesture.touch && performance.now() - gesture.t < 200) {
         gesture = { type: "pan", lx: gesture.sx, ly: gesture.sy, vx: 0, vy: 0, lt: performance.now() };
-        field.classList.add("panning");
+        field.classList.add("panning"); hideFocus();
       } else startKeyDrag(e);
     }
   }
@@ -1075,8 +1074,14 @@ function endPointer(e) {
   if (gesture.type === "key-pending") {
     const el = gesture.el, now = performance.now();
     gesture = null;
+    if (e.pointerType !== "mouse") {
+      // touch: first tap enlarges the key, a second tap on the same key confirms it
+      if (selectedKey === el) { hideFocus(); tryCapture(el, null); }
+      else { showFocusFor(el, true); selectedKey = el; }
+      return;
+    }
     if (lastTap.el === el && now - lastTap.t < 360) { lastTap = { el: null, t: 0 }; tryCapture(el, null); }
-    else { lastTap = { el, t: now }; if (e.pointerType !== "mouse") showFocusFor(el); }
+    else lastTap = { el, t: now };
     return;
   }
   if (gesture.type === "pan") {
@@ -1159,8 +1164,9 @@ function hoverFocus(e) {
   const k = e.target.closest && e.target.closest(".key");
   if (k && !k.classList.contains("spent") && !k.dataset.cell) showFocusFor(k); else hideFocus();
 }
-function showFocusFor(k) {
-  if (cam.s > 1.25) { hideFocus(); return; }
+let selectedKey = null;   // touch: key enlarged by the first tap, waiting for the confirming tap
+function showFocusFor(k, force) {
+  if (cam.s > 1.25 && !force) { hideFocus(); return; }
   const r = k.getBoundingClientRect(), f = field.getBoundingClientRect();
   if (focus.hidden || focusText.textContent !== k.dataset.code) SFX.hover();
   focusText.textContent = k.dataset.code;
@@ -1168,7 +1174,10 @@ function showFocusFor(k) {
   focus.style.top = (r.top + r.height / 2 - f.top) + "px";
   focus.hidden = false;
 }
-function hideFocus() { focus.hidden = true; }
+function hideFocus() { focus.hidden = true; selectedKey = null; }
+// iOS Safari ignores user-scalable=no for pinch: keep pinch for the field only
+document.addEventListener("gesturestart", e => e.preventDefault());
+document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
 
 /* ---------------- game logic ---------------- */
 let toastT = 0;
