@@ -246,17 +246,17 @@ button{font:inherit;color:inherit}
 /* phone: access carousel on top (one page per stack, dots under it), key field below bleeding off the edges;
    a dark column on the right holds the bus (top ~2/3) and the three cartridges */
 @media (max-width:820px){
-  #app{grid-template-columns:minmax(0,1fr) calc(63px + env(safe-area-inset-right,0px));grid-template-rows:auto minmax(0,1fr);
-    grid-template-areas:"panel side" "field side";gap:0;padding:0}
-  .rail{grid-area:side;flex-direction:column;align-items:center;gap:30px;background:#030602;border-left:1px solid var(--trace);
-    padding:15px env(safe-area-inset-right,0px) calc(env(safe-area-inset-bottom,0px) + 16px) 0}
+  #app{grid-template-columns:calc(63px + env(safe-area-inset-left,0px)) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"side panel" "side field";gap:0;padding:0}
+  .rail{grid-area:side;flex-direction:column;align-items:center;gap:30px;background:#030602;border-right:1px solid var(--trace);
+    padding:15px 0 calc(env(safe-area-inset-bottom,0px) + 16px) env(safe-area-inset-left,0px)}
   .bus{flex:1 1 auto;width:32px;min-height:120px}
   .abilities{flex-direction:column;gap:30px}
   .card .tip{display:none}
   .field{grid-area:field;min-height:220px;border:0;border-top:1px solid var(--trace);border-radius:0}
   .panel{grid-area:panel;display:flex;flex-direction:column;gap:6px;padding:calc(env(safe-area-inset-top,0px) + 12px) 0 8px;overflow:visible;min-width:0}
   #entities{order:1;display:flex!important;gap:30px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
-    padding:10px 18px 6px max(18px,env(safe-area-inset-left,0px));scroll-padding-left:max(18px,env(safe-area-inset-left,0px));scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    padding:10px max(18px,env(safe-area-inset-right,0px)) 6px 18px;scroll-padding-left:18px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   #entities::-webkit-scrollbar{display:none}
   #entities::after{content:"";flex:0 0 6px}  /* lets the last page snap fully to the left edge */
   .entity{flex:0 0 100%;scroll-snap-align:start;gap:0}
@@ -268,7 +268,7 @@ button{font:inherit;color:inherit}
   .entity .key{font-size:14px;line-height:14px}
   .entity[data-i="1"] .shell{background:#2a6f9e}
   .entity[data-i="1"].active .shell{background:var(--blue)}
-  .hud{order:2;gap:8px;flex-wrap:nowrap;padding:0 12px 0 max(16px,env(safe-area-inset-left,0px))}
+  .hud{order:2;gap:8px;flex-wrap:nowrap;padding:0 max(12px,env(safe-area-inset-right,0px)) 0 16px}
   .dots{display:flex;gap:6px;flex:1;justify-content:center}
   .dots button{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:var(--line);cursor:pointer}
   .dots button.on{background:var(--act-stroke);box-shadow:0 0 6px var(--act-stroke)}
@@ -280,11 +280,20 @@ button{font:inherit;color:inherit}
   #restart .t{display:none}
   #restart .i{display:inline;font:700 15px/1 var(--font-key);letter-spacing:0}
   #restart,.snd{padding:4px 7px}
-  .grant{position:fixed;left:calc((100% - 63px) / 2);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);z-index:30;width:min(300px,70vw)}
+  .grant{position:fixed;left:calc((100% + 63px) / 2);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);z-index:30;width:min(300px,70vw)}
   .grant span{font-size:17px}
   .legend{display:none}
   .dialog h1{font-size:24px}
   .stats dd{font-size:17px}
+  /* intro on a phone: START pinned right under the title, rules scroll beneath it */
+  .overlay{padding:max(12px,env(safe-area-inset-top,0px)) 12px max(12px,env(safe-area-inset-bottom,0px))}
+  .dialog .body{max-height:calc(100dvh - 40px)}
+  #intro .body{display:flex;flex-direction:column;padding-top:22px}
+  #intro h1{order:0}
+  #intro .actions{order:1;position:sticky;top:-22px;z-index:2;margin:0 -26px 14px;padding:12px 26px 14px;background:var(--module);border-bottom:1px solid var(--trace)}
+  #intro .actions .btn{width:100%;font-size:17px;padding:15px 18px}
+  #intro .sub{order:2}
+  #intro .rules{order:3;margin-bottom:4px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -350,12 +359,12 @@ button{font:inherit;color:inherit}
 <div class="overlay" id="intro">
   <div class="dialog"><div class="shell oct"><div class="body oct">
     <h1>ESC</h1>
-    <p class="sub">Паззл наоборот: почти все ключи на поле лишние. Нужны только те, что справа. Каждый пройденный уровень — поле больше, ловушек хлеще.</p>
+    <p class="sub">Паззл наоборот: почти все ключи на поле лишние. Нужны только те, что в доступах. Каждый пройденный уровень — поле больше, ловушек хлеще.</p>
     <ul class="rules">
-      <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Найди на поле ключи из <b>ACCESS 1</b> и перетащи их вправо. Двойной клик тоже работает.</span></li>
+      <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Найди на поле ключи из <b>ACCESS 1</b> и потяни их к доступам. Двойной тап или клик тоже работает.</span></li>
       <li><span class="ic"><svg viewBox="0 0 20 20"><path d="M10 2v16M2 10h16" stroke="#3FD617" stroke-width="1.5"/></svg></span><span>Поле большое. Тащи его, как карту, колесо или щипок приближают.</span></li>
       <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="#ff4256" stroke-width="1.5"/></svg></span><span>Похожие ключи — ловушки. Ложный ключ отнимает <b>6 секунд</b>.</span></li>
-      <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="2" y="6" width="16" height="8" rx="1.5" fill="none" stroke="#2fa8ff" stroke-width="1.5"/><path d="M7 10h6M10 7v6" stroke="#2fa8ff" stroke-width="1.5"/></svg></span><span>Картриджи справа от шины — способности. Каждая съедает много времени: подсказка и переключение по <b>20 с</b>, заморозка 15 с за 25 с паузы. Чёрточки — заряды. Ячейки <b>+1</b> на поле и серия из 3 верных ключей пополняют их.</span></li>
+      <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="2" y="6" width="16" height="8" rx="1.5" fill="none" stroke="#2fa8ff" stroke-width="1.5"/><path d="M7 10h6M10 7v6" stroke="#2fa8ff" stroke-width="1.5"/></svg></span><span>Картриджи у шины — способности. Каждая съедает много времени: подсказка и переключение по <b>20 с</b>, заморозка 15 с за 25 с паузы. Чёрточки — заряды. Ячейки <b>+1</b> на поле и серия из 3 верных ключей пополняют их.</span></li>
       <li><span class="ic"><svg viewBox="0 0 20 20"><rect x="5" y="2" width="10" height="16" fill="none" stroke="#3FBF1E" stroke-width="1.5"/><path d="M7 6h6M7 9h6M7 12h6M7 15h6" stroke="#3FBF1E"/></svg></span><span>Шина — это время. <b>ACCESS 1</b> — основной стек: собрал — жми <b>ACCESS GRANTED</b>. <b>ACCESS 2</b> — короткий бонус: собери его, и все картриджи зарядятся до максимума и перейдут на следующий уровень.</span></li>
     </ul>
     <div class="actions"><button type="button" class="btn big" id="start">НАЧАТЬ</button></div>
